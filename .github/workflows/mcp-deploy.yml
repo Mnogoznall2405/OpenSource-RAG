@@ -45,15 +45,54 @@ jobs:
         fi
         
     - name: Deploy to MCP GitHub
-      # Используем токен GitHub для деплоя (необходимо настроить в GitHub Secrets)
+      # Используем токен для деплоя через MCP API
       env:
+        MCP_API_KEY: ${{ secrets.MCP_API_KEY }}
+        MCP_PROJECT_ID: ${{ secrets.MCP_PROJECT_ID }}
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        echo "Deployment to MCP would happen here"
-        # Здесь будет команда для деплоя через API MCP
-        # Для полноценного деплоя требуется дополнительная настройка
+        echo "Starting deployment to MCP..."
         
+        # Создаем директорию для деплоя
+        mkdir -p deploy
+        
+        # Копируем необходимые файлы в директорию деплоя
+        cp -r app.py main_fixed.py requirements.txt Procfile runtime.txt deploy/
+        
+        # Создаем файл .env для деплоя с секретными переменными
+        cat > deploy/.env << EOL
+        WEAVIATE_HOST=${{ secrets.WEAVIATE_HOST }}
+        WEAVIATE_PORT=${{ secrets.WEAVIATE_PORT }}
+        WEAVIATE_GRPC_PORT=${{ secrets.WEAVIATE_GRPC_PORT }}
+        OPENROUTER_API_KEY=${{ secrets.OPENROUTER_API_KEY }}
+        OPENROUTER_MODEL=${{ secrets.OPENROUTER_MODEL }}
+        OPENROUTER_API_URL=${{ secrets.OPENROUTER_API_URL }}
+        HUGGINGFACE_TOKEN=${{ secrets.HUGGINGFACE_TOKEN }}
+        GOOGLE_PSE_API_KEY=${{ secrets.GOOGLE_PSE_API_KEY }}
+        GOOGLE_PSE_ID=${{ secrets.GOOGLE_PSE_ID }}
+        EOL
+        
+        # Устанавливаем MCP CLI для деплоя
+        pip install mcp-cli
+        
+        # Выполняем деплой через MCP CLI
+        mcp-cli deploy \
+          --api-key $MCP_API_KEY \
+          --project-id $MCP_PROJECT_ID \
+          --source deploy/ \
+          --app-name opensourcerag \
+          --region eu-west-1
+      
     - name: Verify deployment
+      env:
+        MCP_API_KEY: ${{ secrets.MCP_API_KEY }}
+        MCP_PROJECT_ID: ${{ secrets.MCP_PROJECT_ID }}
       run: |
-        echo "Deployment verification would happen here"
-        # Здесь можно добавить проверку успешности деплоя 
+        echo "Verifying deployment status..."
+        # Проверяем статус деплоя
+        mcp-cli status \
+          --api-key $MCP_API_KEY \
+          --project-id $MCP_PROJECT_ID \
+          --app-name opensourcerag
+        
+        echo "Deployment URL: https://opensourcerag.mcp-project-$MCP_PROJECT_ID.mcp.app" 
