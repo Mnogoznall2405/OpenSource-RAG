@@ -1,0 +1,59 @@
+name: MCP GitHub Deployment
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    
+    - name: Run tests
+      run: |
+        # Здесь можно добавить запуск тестов, если они есть
+        python -c "import streamlit; print('Streamlit version:', streamlit.__version__)"
+        
+    - name: Prepare deployment
+      run: |
+        # Создаем необходимые файлы для деплоя
+        echo "Preparing files for MCP deployment"
+        
+        # Создаем Procfile для Heroku/MCP если его нет
+        if [ ! -f Procfile ]; then
+          echo "web: streamlit run app.py --server.port \$PORT --server.headless true" > Procfile
+        fi
+        
+        # Создаем файл runtime.txt если его нет
+        if [ ! -f runtime.txt ]; then
+          echo "python-3.10.x" > runtime.txt
+        fi
+        
+    - name: Deploy to MCP GitHub
+      # Используем токен GitHub для деплоя (необходимо настроить в GitHub Secrets)
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo "Deployment to MCP would happen here"
+        # Здесь будет команда для деплоя через API MCP
+        # Для полноценного деплоя требуется дополнительная настройка
+        
+    - name: Verify deployment
+      run: |
+        echo "Deployment verification would happen here"
+        # Здесь можно добавить проверку успешности деплоя 
