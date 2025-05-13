@@ -18,26 +18,49 @@ import shutil  # Для удаления временных файлов
 from weaviate.classes.config import Property, DataType # Добавлено для схем Weaviate v4
 from weaviate.exceptions import UnexpectedStatusCodeError # Добавлено для обработки ошибок Weaviate
 
-# Загрузка переменных окружения из .env файла
+# Загрузка переменных окружения из .env файла или из Streamlit secrets
 load_dotenv()
 
 # --- Функции для работы с переменными окружения ---
 def get_env_vars():
     """Получение переменных окружения и вывод их значений в лог"""
-    env_vars = {
-        "WEAVIATE_HOST": os.getenv("WEAVIATE_HOST"),
-        "WEAVIATE_PORT": os.getenv("WEAVIATE_PORT"),
-        "WEAVIATE_GRPC_PORT": os.getenv("WEAVIATE_GRPC_PORT"),
-        "OPENROUTER_API_KEY": os.getenv("OPENROUTER_API_KEY"),
-        "OPENROUTER_MODEL": os.getenv("OPENROUTER_MODEL"),
-        "OPENROUTER_API_URL": os.getenv("OPENROUTER_API_URL"),
-        "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN"),
-        "GOOGLE_PSE_API_KEY": os.getenv("GOOGLE_PSE_API_KEY"),
-        "GOOGLE_PSE_ID": os.getenv("GOOGLE_PSE_ID")
-    }
-    
+    # Настройка логирования
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
     logger = logging.getLogger(__name__)
+    
+    # Проверяем, доступны ли секреты Streamlit
+    if hasattr(st, 'secrets'):
+        logger.info("Загрузка переменных из Streamlit secrets")
+        env_vars = {
+            # Weaviate настройки
+            "WEAVIATE_HOST": st.secrets.get("weaviate", {}).get("host") or os.getenv("WEAVIATE_HOST"),
+            "WEAVIATE_PORT": st.secrets.get("weaviate", {}).get("port") or os.getenv("WEAVIATE_PORT"),
+            "WEAVIATE_GRPC_PORT": st.secrets.get("weaviate", {}).get("grpc_port") or os.getenv("WEAVIATE_GRPC_PORT"),
+            
+            # API ключи
+            "OPENROUTER_API_KEY": st.secrets.get("api", {}).get("openrouter_key") or os.getenv("OPENROUTER_API_KEY"),
+            "OPENROUTER_MODEL": st.secrets.get("api", {}).get("openrouter_model") or os.getenv("OPENROUTER_MODEL"),
+            "OPENROUTER_API_URL": st.secrets.get("api", {}).get("openrouter_url") or os.getenv("OPENROUTER_API_URL"),
+            "HUGGINGFACE_TOKEN": st.secrets.get("api", {}).get("huggingface_token") or os.getenv("HUGGINGFACE_TOKEN"),
+            
+            # Google PSE
+            "GOOGLE_PSE_API_KEY": st.secrets.get("google", {}).get("pse_api_key") or os.getenv("GOOGLE_PSE_API_KEY"),
+            "GOOGLE_PSE_ID": st.secrets.get("google", {}).get("pse_id") or os.getenv("GOOGLE_PSE_ID")
+        }
+    else:
+        logger.info("Streamlit secrets не найдены, загрузка из переменных окружения")
+        env_vars = {
+            "WEAVIATE_HOST": os.getenv("WEAVIATE_HOST"),
+            "WEAVIATE_PORT": os.getenv("WEAVIATE_PORT"),
+            "WEAVIATE_GRPC_PORT": os.getenv("WEAVIATE_GRPC_PORT"),
+            "OPENROUTER_API_KEY": os.getenv("OPENROUTER_API_KEY"),
+            "OPENROUTER_MODEL": os.getenv("OPENROUTER_MODEL"),
+            "OPENROUTER_API_URL": os.getenv("OPENROUTER_API_URL"),
+            "HUGGINGFACE_TOKEN": os.getenv("HUGGINGFACE_TOKEN"),
+            "GOOGLE_PSE_API_KEY": os.getenv("GOOGLE_PSE_API_KEY"),
+            "GOOGLE_PSE_ID": os.getenv("GOOGLE_PSE_ID")
+        }
+    
     logger.info("Текущие значения переменных окружения:")
     for key, value in env_vars.items():
         if key.endswith("_KEY") or key.endswith("_TOKEN"):
@@ -45,6 +68,7 @@ def get_env_vars():
         else:
             display_value = value
         logger.info(f"{key}: {display_value}")
+    
     return env_vars
 
 env_vars = get_env_vars()
